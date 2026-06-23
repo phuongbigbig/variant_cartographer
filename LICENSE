@@ -1,0 +1,32 @@
+Copyright © 2026 Nguyen Thanh Phuong. All rights reserved.
+
+This software and its associated files (the "Software") are the proprietary
+work of Nguyen Thanh Phuong. The Software is made available for personal and
+academic viewing and use only.
+
+You MAY:
+  - Access and use the hosted Software through a web browser.
+  - View the source for personal or educational reference.
+
+You MAY NOT, without prior written permission from the copyright holder:
+  - Copy, redistribute, republish, or host the Software or substantial
+    portions of it elsewhere.
+  - Modify, adapt, or create derivative works based on the Software.
+  - Use the Software or any part of it for commercial purposes.
+  - Remove or alter this copyright notice or the attribution displayed within
+    the Software and in figures it exports.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE
+USE OF THE SOFTWARE.
+
+The Software retrieves data from third-party public services (NCBI ClinVar,
+UniProt, Ensembl). Use of those services is subject to their own terms. The
+Software is an independent work and is not endorsed by or affiliated with them.
+
+This is an exploratory and visualization tool and is NOT intended for clinical
+or diagnostic use.
+
+For permissions beyond the scope of this license, contact the copyright holder.

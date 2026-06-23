@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Variant Cartographer — ClinVar P/LP maps for any gene</title>
+<style>
+  :root{
+    --bg:#F4F6F8; --surface:#FFFFFF; --ink:#1C2126; --muted:#687078; --faint:#A0A7AE;
+    --line:#EAEDF0; --line2:#F0F2F5; --track:#D9DEE3;
+    --accent:#0E7C66; --accent-soft:#0E7C6616; --accent-text:#FFFFFF;
+    --sh-sm:0 1px 2px rgba(16,24,40,.04);
+    --sh:0 1px 3px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.05);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Roboto Mono",Menlo,monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;transition:background .2s,color .2s}
+  body{padding:36px 24px 72px;max-width:1160px;margin:0 auto;line-height:1.5}
+  ::selection{background:var(--accent-soft)}
+
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:500}
+  h1{font-weight:680;font-size:30px;letter-spacing:-.02em;margin:.28em 0 .2em;line-height:1.08}
+  .sub{color:var(--muted);font-size:14.5px;max-width:60ch;margin:0 0 24px;font-weight:380}
+
+  .themebar{display:flex;align-items:center;gap:14px;padding-top:6px}
+  .swatches{display:flex;gap:7px}
+  .sw-btn{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;box-shadow:var(--sh-sm);transition:transform .1s}
+  .sw-btn:hover{transform:scale(1.12)}
+  .sw-btn.active{border-color:var(--ink)}
+  .mode-btn{width:34px;height:34px;border-radius:9px;border:none;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line);cursor:pointer;font-size:15px;display:grid;place-items:center}
+  .mode-btn:hover{background:var(--accent-soft)}
+
+  .card{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh)}
+  .bar{padding:20px 22px;margin-bottom:14px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:7px}
+  label{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  input[type=text],input[type=number],select{font-family:var(--mono);font-size:15px;font-weight:500;padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);transition:border-color .15s,box-shadow .15s}
+  input#gene{font-size:17px;font-weight:600;letter-spacing:.03em;width:190px;text-transform:uppercase}
+  input::placeholder{color:var(--faint);font-weight:400}
+  input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  input.key{width:230px;font-size:13px;font-weight:400}
+  input[type=range]{width:140px;accent-color:var(--accent);height:4px}
+  .winval{font-family:var(--mono);font-size:13px;color:var(--muted);min-width:20px}
+
+  button{font-family:var(--sans);font-size:14px;font-weight:600;padding:11px 22px;border-radius:10px;border:none;background:var(--accent);color:var(--accent-text);cursor:pointer;transition:filter .14s,transform .05s;box-shadow:var(--sh-sm)}
+  button:hover{filter:brightness(.93)}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:var(--surface);color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--line)}
+  button.ghost:hover{filter:none;background:var(--accent-soft)}
+  button.sm{padding:8px 14px;font-size:13px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+
+  .toggles{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--line2)}
+  .switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;color:var(--ink);user-select:none}
+  .switch input{position:absolute;opacity:0;pointer-events:none}
+  .track{width:38px;height:22px;border-radius:22px;background:var(--track);position:relative;transition:background .16s;flex:none}
+  .track::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.18);transition:transform .16s}
+  .switch input:checked + .track{background:var(--accent)}
+  .switch input:checked + .track::after{transform:translateX(16px)}
+  .examples{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-left:auto}
+  .examples .lab{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.12em;text-transform:uppercase}
+  .chip{font-family:var(--mono);font-size:12.5px;padding:5px 11px;border-radius:8px;background:var(--bg);color:var(--accent);cursor:pointer;transition:filter .14s}
+  .chip:hover{filter:brightness(.97);background:var(--accent-soft)}
+
+  details{margin-top:14px}
+  details summary{font-size:12.5px;color:var(--muted);cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"+";font-family:var(--mono);color:var(--accent);font-weight:700}
+  details[open] summary::before{content:"\2013"}
+  .advrow{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;align-items:flex-end}
+  .note{font-size:11.5px;color:var(--faint);margin-top:10px;max-width:64ch;line-height:1.5}
+
+  /* custom mutations */
+  .cm-editor{margin-top:14px}
+  .cm-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .cm-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .cm-chip{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;padding:5px 8px 5px 11px;border-radius:8px;background:var(--bg);color:var(--ink)}
+  .cm-chip .dot{width:9px;height:9px;transform:rotate(45deg);flex:none}
+  .cm-chip button{background:none;color:var(--faint);box-shadow:none;padding:0 2px;font-size:15px;line-height:1}
+  .cm-chip button:hover{color:var(--ns);filter:none}
+  .cm-hl{margin-top:14px}
+  .cm-err{color:#E11D48;font-size:12px;margin-top:8px;min-height:14px}
+
+  #status{font-family:var(--mono);font-size:12.5px;color:var(--muted);min-height:20px;margin:4px 4px 16px;display:flex;align-items:center;gap:9px}
+  .spinner{width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .err{color:#E11D48} .cached{color:var(--accent)}
+
+  #result{display:none}
+  .summary{display:flex;flex-wrap:wrap;gap:26px;padding:20px 24px;margin-bottom:14px;align-items:center}
+  .stat{display:flex;flex-direction:column;gap:4px;line-height:1}
+  .stat b{font-family:var(--mono);font-size:23px;font-weight:600;letter-spacing:-.01em}
+  .stat small{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+  .stat.name{margin-left:auto;text-align:right;max-width:42ch}
+  .stat.name .pn{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3}
+
+  .plotwrap{padding:14px 14px 2px;overflow-x:auto}
+  .cardtitle{font-size:12px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:16px 22px 0}
+  .gminfo{font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:8px 22px 0;line-height:1.5}
+  .gminfo b{color:var(--ink);font-weight:600}
+  .gminfo a{color:var(--accent);text-decoration:none}.gminfo a:hover{text-decoration:underline}
+  svg{display:block;width:100%;height:auto;font-family:var(--sans)}
+  .legend{display:flex;flex-wrap:wrap;gap:11px 18px;padding:6px 24px 18px;align-items:center}
+  .lg{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;user-select:none;color:var(--ink)}
+  .lg .sw{width:11px;height:11px;border-radius:50%;flex:none}
+  .lg .ct{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .lg.off{opacity:.3}
+  .lgsep{width:100%;height:1px;background:var(--line2);margin:3px 0}
+  .lgfeat{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .lgfeat .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  .actions{display:flex;gap:10px;padding:2px 24px 20px;flex-wrap:wrap}
+  #genemodelCard{display:none;margin-top:14px}
+  .gmctl{display:flex;gap:16px;align-items:center;padding:0 22px 6px;flex-wrap:wrap}
+  .tip{position:fixed;pointer-events:none;background:#15191D;color:#fff;border-radius:9px;padding:9px 11px;font-size:12px;line-height:1.5;max-width:300px;opacity:0;transition:opacity .1s;z-index:60;box-shadow:0 10px 34px rgba(0,0,0,.32)}
+  .tip .t-name{font-family:var(--mono);font-size:11px;color:#7fd9c2;word-break:break-word;margin-bottom:2px}
+  .foot{font-size:11.5px;color:var(--faint);margin-top:26px;line-height:1.65;max-width:86ch}
+  .foot code{font-family:var(--mono);background:var(--line2);padding:1px 5px;border-radius:4px;color:var(--muted)}
+  .foot b{color:var(--muted)}
+  .copyright{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);text-align:center}
+  @media(max-width:560px){.stat.name{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+  <div class="head">
+    <div>
+      <div class="eyebrow">ClinVar · UniProt · Ensembl</div>
+      <h1>Variant Cartographer</h1>
+      <p class="sub">Map every pathogenic / likely-pathogenic ClinVar variant onto a protein, with its domain architecture, exon structure, and your own custom mutations. Runs entirely in your browser.</p>
+    </div>
+    <div class="themebar">
+      <div class="swatches" id="swatches"></div>
+      <button class="mode-btn" id="modeBtn" title="Toggle light / dark">☾</button>
+    </div>
+  </div>
+
+  <div class="card bar">
+    <div class="row">
+      <div class="field"><label for="gene">Gene symbol</label><input id="gene" type="text" value="SLC25A13" placeholder="e.g. CFTR" autocomplete="off" spellcheck="false" /></div>
+      <div class="field"><label for="win">Density window ±aa</label><div style="display:flex;align-items:center;gap:10px;height:44px"><input id="win" type="range" min="5" max="40" value="15" /><span class="winval" id="winval">15</span></div></div>
+      <button id="go">Draw map</button>
+      <div class="examples"><span class="lab">Try</span>
+        <span class="chip" data-g="SLC25A13">SLC25A13</span><span class="chip" data-g="TP53">TP53</span>
+        <span class="chip" data-g="CFTR">CFTR</span><span class="chip" data-g="LMNA">LMNA</span></div>
+    </div>
+
+    <div class="toggles">
+      <label class="switch"><input type="checkbox" id="exonToggle" /><span class="track"></span>Exon track (aligned to protein)</label>
+      <label class="switch"><input type="checkbox" id="modelToggle" /><span class="track"></span>Detailed gene model (to scale)</label>
+      <span style="font-size:12px;color:var(--faint)">Both query Ensembl only when enabled</span>
+    </div>
+
+    <details class="cm-editor">
+      <summary>Custom mutations</summary>
+      <div class="cm-form">
+        <div class="field"><label for="cmPos">Residue position</label><input id="cmPos" type="number" min="1" placeholder="e.g. 355" style="width:120px" /></div>
+        <div class="field"><label for="cmType">Type</label>
+          <select id="cmType" style="width:150px"><option>Missense</option><option>Nonsense</option><option>Frameshift</option><option>Splice</option><option>Inframe indel</option><option>Other</option></select></div>
+        <div class="field"><label for="cmLabel">Label (optional)</label><input id="cmLabel" type="text" placeholder="e.g. p.R355Q · patient 1" style="width:200px;text-transform:none" /></div>
+        <button class="ghost sm" id="cmAdd">Add mutation</button>
+      </div>
+      <div class="cm-err" id="cmErr"></div>
+      <div class="cm-list" id="cmList"></div>
+      <label class="switch cm-hl"><input type="checkbox" id="cmHighlight" /><span class="track"></span>Highlight custom mutations (gray out ClinVar)</label>
+    </details>
+
+    <details class="adv">
+      <summary>Advanced — NCBI API key &amp; rate-limit settings</summary>
+      <div class="advrow">
+        <div class="field"><label for="apikey">NCBI API key</label><input id="apikey" class="key" type="text" placeholder="raises limit to 10 req/s" autocomplete="off" spellcheck="false" /></div>
+        <div class="field"><label for="email">Contact email</label><input id="email" class="key" type="text" placeholder="sent to NCBI per policy" autocomplete="off" spellcheck="false" /></div>
+      </div>
+      <p class="note">Without a key NCBI allows ~3 requests/second; the tool stays under that and retries with backoff on a 429. A free key (NCBI account → API Key Management) lifts this to 10/s. Results cache in this browser for 24 h. Key, email and theme are stored only locally.</p>
+    </details>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="result">
+    <div class="card summary" id="summary"></div>
+    <div class="card">
+      <div class="plotwrap"><svg id="plot" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="legend" id="legend"></div>
+      <div class="actions">
+        <button class="ghost" id="dlsvg">Download SVG</button>
+        <button class="ghost" id="dlpng">Download PNG</button>
+        <button class="ghost" id="dlcsv">Download variant table (CSV)</button>
+      </div>
+    </div>
+
+    <div class="card" id="genemodelCard">
+      <div class="cardtitle">Gene model — exon / intron structure</div>
+      <div class="gminfo" id="gminfo"></div>
+      <div class="gmctl">
+        <label class="switch"><input type="checkbox" id="introToScale" /><span class="track"></span>Introns to scale</label>
+        <span id="gmmeta" style="font-size:12px;color:var(--faint);font-family:var(--mono)"></span>
+      </div>
+      <div class="plotwrap"><svg id="genemodel" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="actions">
+        <button class="ghost" id="dlmsvg">Download SVG</button>
+        <button class="ghost" id="dlmpng">Download PNG</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">
+    Sources: NCBI ClinVar (aggregate germline classification), UniProt (reviewed human entry), Ensembl (canonical transcript). Counts reflect <b>aggregate VCV classification</b>. Residue positions come from HGVS <code>p.</code> where present; splice/intronic variants are placed at an approximate residue (<code>cDNA ÷ 3</code>) and flagged. Whole-gene CNVs are counted but not plotted. The aligned exon strip maps coding sequence to the residue axis; the detailed gene model is drawn in genomic coordinates (its own scale). Custom mutations are user-supplied and not from ClinVar. ClinVar updates weekly. Exploratory tool — not for clinical use.
+  </p>
+  <div class="copyright">Copyright © <span id="cyear"></span> Nguyen Thanh Phuong. All rights reserved.</div>
+
+  <div class="tip" id="tip"></div>
+
+<script>
+/* ===================== themes ===================== */
+const MODES={
+  light:{bg:"#F4F6F8",surface:"#FFFFFF",ink:"#1C2126",muted:"#687078",faint:"#A0A7AE",line:"#EAEDF0",line2:"#F0F2F5",track:"#D9DEE3",
+    sh:"0 1px 3px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.05)",shsm:"0 1px 2px rgba(16,24,40,.04)",
+    axis:"#2B3138",grid:"#CDD3D9",backbone:"#E3E7EB",gray:"#C7CDD3"},
+  dark:{bg:"#0E1317",surface:"#171F26",ink:"#E7ECF0",muted:"#9AA4AE",faint:"#606B75",line:"#242E37",line2:"#1B232A",track:"#2A343D",
+    sh:"0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.5)",shsm:"0 1px 2px rgba(0,0,0,.35)",
+    axis:"#AEB9C3",grid:"#3A444E",backbone:"#2A343D",gray:"#49545E"}
+};
+const ACCENTS={Teal:{l:"#0E7C66",d:"#2DD4BF"},Indigo:{l:"#4F46E5",d:"#818CF8"},Violet:{l:"#7C3AED",d:"#A78BFA"},
+  Amber:{l:"#B45309",d:"#F59E0B"},Rose:{l:"#E11D48",d:"#FB7185"},Slate:{l:"#475569",d:"#94A3B8"}};
+let THEME={name:"Teal",mode:"light"};
+window.T={};
+function hx2(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function hxs(r){return'#'+r.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');}
+function mix(a,b,t){const A=hx2(a),B=hx2(b);return hxs([0,1,2].map(i=>A[i]+(B[i]-A[i])*t));}
+function applyTheme(){
+  const m=MODES[THEME.mode], a=ACCENTS[THEME.name][THEME.mode==="dark"?"d":"l"];
+  const rs=document.documentElement.style;
+  // accent-matched page background (only the page, not the cards)
+  let bgCenter,bodyBg;
+  if(THEME.mode==="dark"){bgCenter=mix(m.bg,a,0.06);bodyBg=bgCenter;}
+  else{bgCenter=mix("#FBFCFD",a,0.07);const edge=mix(bgCenter,"#000000",0.05);
+    bodyBg=`linear-gradient(90deg, ${edge} 0%, ${bgCenter} 30%, ${bgCenter} 70%, ${edge} 100%)`;}
+  document.body.style.background=bodyBg;document.body.style.backgroundAttachment="fixed";
+  rs.setProperty("--bg",bgCenter);rs.setProperty("--surface",m.surface);rs.setProperty("--ink",m.ink);
+  rs.setProperty("--muted",m.muted);rs.setProperty("--faint",m.faint);rs.setProperty("--line",m.line);
+  rs.setProperty("--line2",m.line2);rs.setProperty("--track",m.track);rs.setProperty("--sh",m.sh);rs.setProperty("--sh-sm",m.shsm);
+  rs.setProperty("--accent",a);rs.setProperty("--accent-soft",a+(THEME.mode==="dark"?"2a":"16"));
+  rs.setProperty("--accent-text",THEME.mode==="dark"?"#0E1317":"#FFFFFF");
+  window.T={mode:THEME.mode,ink:m.ink,muted:m.muted,faint:m.faint,axis:m.axis,grid:m.grid,backbone:m.backbone,
+    surface:m.surface,accent:a,gray:m.gray,exonCoding:a,exonUtr:a+(THEME.mode==="dark"?"55":"44")};
+  document.getElementById("modeBtn").textContent=THEME.mode==="dark"?"☀":"☾";
+  [...document.querySelectorAll(".sw-btn")].forEach(b=>b.classList.toggle("active",b.dataset.name===THEME.name));
+  try{localStorage.setItem("vc:theme",JSON.stringify(THEME));}catch(e){}
+  if(CURRENT){render(CURRENT,+winEl.value);if(CURRENT.structure&&modelToggle.checked)renderGeneModel(CURRENT.structure);}
+}
+function initThemeUI(){
+  const sw=document.getElementById("swatches");
+  Object.keys(ACCENTS).forEach(n=>{const b=document.createElement("button");b.className="sw-btn";b.dataset.name=n;
+    b.style.background=ACCENTS[n].l;b.title=n;b.onclick=()=>{THEME.name=n;applyTheme();};sw.appendChild(b);});
+  document.getElementById("modeBtn").onclick=()=>{THEME.mode=THEME.mode==="dark"?"light":"dark";applyTheme();};
+  try{const s=JSON.parse(localStorage.getItem("vc:theme"));if(s&&ACCENTS[s.name])THEME=s;}catch(e){}
+}
+
+/* ===================== utils + caching + backoff ===================== */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const lsGet=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+const TTL=24*3600*1000;
+async function jget(url,tries=3){
+  for(let i=0;i<tries;i++){
+    let r;try{r=await fetch(url,{headers:{Accept:"application/json"}});}
+    catch(e){if(i===tries-1)throw e;await sleep(700*(i+1));continue;}
+    if(r.ok)return r.json();
+    if((r.status===429||r.status>=500)&&i<tries-1){await sleep(900*Math.pow(2,i)+Math.random()*300);continue;}
+    throw new Error("HTTP "+r.status);
+  }
+}
+function eutil(path,params){
+  const p=new URLSearchParams(params);p.set("tool","variant-cartographer");
+  const email=(document.getElementById("email").value||"").trim();if(email)p.set("email",email);
+  const key=(document.getElementById("apikey").value||"").trim();if(key)p.set("api_key",key);
+  return `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/${path}?${p.toString()}`;
+}
+
+/* ===================== pipeline ===================== */
+const PLP=new Set(["Pathogenic","Likely pathogenic","Pathogenic/Likely pathogenic"]);
+async function resolveGene(sym){
+  const q=encodeURIComponent(`gene_exact:${sym} AND organism_id:9606 AND reviewed:true`);
+  const d=await jget(`https://rest.uniprot.org/uniprotkb/search?query=${q}&format=json&size=1`);
+  if(!d.results||!d.results.length)throw new Error(`No reviewed human UniProt entry for "${sym}".`);
+  const e=d.results[0],length=e.sequence.length;
+  const name=e.proteinDescription?.recommendedName?.fullName?.value||e.uniProtkbId;
+  const KEEP=new Set(["Domain","Transmembrane","Intramembrane","Repeat","Region","Motif","Coiled coil","Zinc finger","DNA binding","Calcium binding","Active site","Binding site","Signal"]);
+  const features=(e.features||[]).filter(f=>KEEP.has(f.type)&&f.location?.start?.value&&f.location?.end?.value)
+    .map(f=>({type:f.type,start:f.location.start.value,end:f.location.end.value,desc:f.description||""}));
+  return {accession:e.primaryAccession,name,length,features};
+}
+function funcClass(mcList,vt){
+  const mc=(mcList||[]).join(";").toLowerCase();
+  if(mc.includes("frameshift"))return"Frameshift";if(mc.includes("nonsense"))return"Nonsense";
+  if(mc.includes("splice"))return"Splice";if(mc.includes("missense"))return"Missense";
+  if(mc.includes("synonymous"))return"Synonymous";if(mc.includes("inframe"))return"Inframe indel";
+  if(mc.includes("intron"))return"Intronic";
+  const S=new Set(["Deletion","Duplication","copy number loss","copy number gain","Insertion","Microsatellite","Complex","Inversion","Indel"]);
+  return S.has(vt)?"Structural/CNV":"Other";
+}
+function parsePos(name,pc){
+  let m=/p\.([A-Z][a-z]{2})(\d+)/.exec(name||"");if(m)return{pos:+m[2],src:"protein"};
+  m=/([A-Z])(\d+)/.exec(pc||"");if(m)return{pos:+m[2],src:"protein"};
+  m=/c\.(\d+)/.exec(name||"");if(m)return{pos:Math.ceil(+m[1]/3),src:"cdna"};
+  return{pos:null,src:null};
+}
+async function fetchClinVar(sym,prog){
+  const es=await jget(eutil("esearch.fcgi",{db:"clinvar",term:`${sym}[gene] AND "pathogenic"[Clinical Significance]`,retmax:"6000",retmode:"json"}));
+  const ids=es.esearchresult.idlist||[];prog(`Found ${ids.length} candidate records — fetching details…`);
+  const recs=[];
+  for(let i=0;i<ids.length;i+=300){
+    const su=await jget(eutil("esummary.fcgi",{db:"clinvar",id:ids.slice(i,i+300).join(","),retmode:"json"}));
+    const res=su.result||{};(res.uids||[]).forEach(u=>recs.push(res[u]));
+    prog(`Fetched ${Math.min(i+300,ids.length)} / ${ids.length} records…`);await sleep(140);
+  }
+  const out=[];
+  for(const rec of recs){
+    const g=rec.germline_classification||{},label=(g.description||"").trim();if(!PLP.has(label))continue;
+    const vs=(rec.variation_set||[{}])[0]||{};const{pos,src}=parsePos(rec.title||"",rec.protein_change||"");
+    out.push({accession:rec.accession,name:rec.title||"",classification:label,review:g.review_status||"",
+      variant_type:vs.variant_type||"",func_class:funcClass(rec.molecular_consequence_list,vs.variant_type),pos,pos_src:src,protein_change:rec.protein_change||""});
+  }
+  return out;
+}
+async function fetchStructure(sym){
+  const g=await jget(`https://rest.ensembl.org/lookup/symbol/homo_sapiens/${encodeURIComponent(sym)}?expand=1;content-type=application/json`);
+  const ts=(g.Transcript||[]).filter(t=>t.biotype==="protein_coding"&&t.Translation);
+  if(!ts.length)throw new Error("no coding transcript");
+  const tx=ts.find(t=>t.is_canonical)||ts[0];
+  const strand=tx.strand,cdsLo=tx.Translation.start,cdsHi=tx.Translation.end;
+  let ex=(tx.Exon||[]).map(e=>({s:e.start,e:e.end}));
+  ex.sort((a,b)=>strand===1?a.s-b.s:b.s-a.s);
+  let cum=0,utr5=0,utr3=0;const segs=[],exons=[];
+  ex.forEach((x,i)=>{
+    const ovs=Math.max(x.s,cdsLo),ove=Math.min(x.e,cdsHi),cdsLen=Math.max(0,ove-ovs+1);
+    const below=Math.max(0,Math.min(x.e,cdsLo-1)-x.s+1),above=Math.max(0,x.e-Math.max(x.s,cdsHi+1)+1);
+    const u5=strand===1?below:above,u3=strand===1?above:below;
+    if(cdsLen>0){segs.push({exon:i+1,res0:cum/3,res1:(cum+cdsLen)/3});cum+=cdsLen;}else segs.push({exon:i+1,res0:null,res1:null});
+    exons.push({n:i+1,s:x.s,e:x.e,len:x.e-x.s+1,cds:cdsLen,u5,u3});
+  });
+  // introns (5'->3')
+  const introns=[];for(let i=0;i<exons.length-1;i++){const a=exons[i],b=exons[i+1];introns.push(strand===1?b.s-a.e-1:a.s-b.e-1);}
+  const gmin=Math.min(...ex.map(x=>x.s)),gmax=Math.max(...ex.map(x=>x.e));
+  return {transcript:tx.id,geneId:g.id,assembly:g.assembly_name||tx.assembly_name||"GRCh38",
+    chr:g.seq_region_name||tx.seq_region_name,geneStart:g.start,geneEnd:g.end,
+    strand,nExon:ex.length,utr5,utr3,segs,exons,introns,gmin,gmax,cdsLo,cdsHi,cdsAA:Math.round(cum/3)-1};
+}
+async function getGene(sym,prog,force){
+  const ck="vc:gene:"+sym,c=lsGet(ck);
+  if(!force&&c&&Date.now()-c.ts<TTL){prog("");return{data:JSON.parse(JSON.stringify(c.data)),cached:true};}
+  prog(`Resolving ${sym} in UniProt…`);
+  const protein=await resolveGene(sym),variants=await fetchClinVar(sym,prog);
+  const data={symbol:sym,protein,variants};lsSet(ck,{ts:Date.now(),data});return{data,cached:false};
+}
+async function getStructure(sym,prog,force){
+  const ck="vc:struct2:"+sym,c=lsGet(ck);
+  if(!force&&c&&Date.now()-c.ts<TTL)return c.data;
+  prog(`Loading ${sym} gene structure from Ensembl…`);
+  const s=await fetchStructure(sym);lsSet(ck,{ts:Date.now(),data:s});return s;
+}
+
+/* ===================== protein map render ===================== */
+const SVGNS="http://www.w3.org/2000/svg";
+const CLASS_ORDER=["Frameshift","Nonsense","Splice","Missense","Inframe indel","Intronic","Synonymous","Other"];
+const RAWCOL={Frameshift:"#E69F00",Nonsense:"#D55E00",Splice:"#0072B2",Missense:"#009E73","Inframe indel":"#CC79A7",Intronic:"#8A9197",Synonymous:"#B8901E",Other:"#7E868E","Structural/CNV":"#7A828A"};
+const FEAT_COL={Transmembrane:"#C0392B",Intramembrane:"#E67E22",Domain:"#2E86C1","DNA binding":"#7D3C98","Calcium binding":"#17A589","Zinc finger":"#138D75",Repeat:"#8E7CC3",Region:"#AAB3BB",Motif:"#CA6F1E","Coiled coil":"#B7950B",Signal:"#34495E"};
+const POINT_FEATS=new Set(["Active site","Binding site"]);
+const TRUNC=new Set(["Frameshift","Nonsense","Splice"]);
+let HIDDEN=new Set(),CUSTOM=[],HIGHLIGHT=false;
+const el=(t,a={},p)=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;};
+const exonOf=(s,res)=>{if(!s)return null;for(const x of s.segs){if(x.res0!=null&&res>x.res0&&res<=x.res1+1)return x.exon;}return null;};
+
+function render(data,win){
+  const T=window.T,{symbol,protein,variants,structure}=data,L=protein.length;
+  const dim=HIGHLIGHT&&CUSTOM.length;
+  const posv=variants.filter(v=>v.pos&&!HIDDEN.has(v.func_class)&&v.func_class!=="Structural/CNV");
+  const W=1100,mL=58,mR=26,plotW=W-mL-mR,X=p=>mL+(p-1)/Math.max(L-1,1)*plotW;
+
+  const byPos=new Map();
+  posv.forEach(v=>{(byPos.get(v.pos)||byPos.set(v.pos,[]).get(v.pos)).push(v);});
+  const CAP=10;let maxStack=1;
+  byPos.forEach(a=>{a.sort((x,y)=>CLASS_ORDER.indexOf(x.func_class)-CLASS_ORDER.indexOf(y.func_class));maxStack=Math.max(maxStack,Math.min(a.length,CAP));});
+
+  const rects=protein.features.filter(f=>!POINT_FEATS.has(f.type)&&f.type!=="Topological domain").sort((a,b)=>a.start-b.start);
+  const laneEnds=[],laneOf=new Map();
+  rects.forEach(f=>{let pl=false;for(let i=0;i<laneEnds.length;i++){if(f.start>laneEnds[i]){laneEnds[i]=f.end;laneOf.set(f,i);pl=true;break;}}if(!pl){laneEnds.push(f.end);laneOf.set(f,laneEnds.length-1);}});
+  const nLanes=Math.max(laneEnds.length,1),points=protein.features.filter(f=>POINT_FEATS.has(f.type));
+
+  const cmHead=CUSTOM.length?30:6, rowH=15;
+  const lolliH=Math.max(64,maxStack*rowH+22)+cmHead, yBase=28+lolliH;
+  const domTop=yBase+15,laneH=15,domH=nLanes*laneH+(points.length?12:0)+12;
+  const exonOn=structure&&exonToggle.checked, exonH=exonOn?34:0,exonTop=domTop+domH+(exonOn?14:0);
+  const densTop=exonTop+exonH+(exonOn?16:18),densH=92,H=densTop+densH+36;
+
+  const svg=document.getElementById("plot");svg.innerHTML="";svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  el("text",{x:mL,y:19,"font-size":14,"font-weight":700,fill:T.ink},svg).textContent=`${symbol} — ClinVar P/LP variant map`;
+  el("text",{x:W-mR,y:19,"font-size":11,"text-anchor":"end",fill:T.faint,"font-family":"var(--mono)"},svg).textContent=`${protein.accession} · ${L} aa`;
+
+  // lollipops (ClinVar)
+  const gL=el("g",{},svg);
+  byPos.forEach((arr,pos)=>{
+    const x=X(pos),n=Math.min(arr.length,CAP);
+    el("line",{x1:x,y1:yBase,x2:x,y2:yBase-n*rowH+rowH-4,stroke:dim?T.gray:"#CDD3D9","stroke-width":.8,opacity:dim?.5:1},gL);
+    for(let i=0;i<n;i++){
+      const v=arr[i],cy=yBase-(i+1)*rowH+rowH/2,col=dim?T.gray:(RAWCOL[v.func_class]||"#555");
+      const c=el("circle",{cx:x,cy,r:4.5,fill:col,stroke:T.surface,"stroke-width":.8},gL);
+      if(!dim){c.style.cursor="pointer";const more=(i===n-1&&arr.length>CAP)?`+${arr.length-CAP} more at this codon`:"";
+        c.addEventListener("mousemove",ev=>showTip(ev,v,more,structure));c.addEventListener("mouseleave",hideTip);}
+    }
+  });
+  el("text",{x:16,y:yBase-(lolliH-cmHead)/2,"font-size":10.5,fill:T.muted,"text-anchor":"middle",transform:`rotate(-90 16 ${yBase-(lolliH-cmHead)/2})`},svg).textContent="variants / position";
+  el("line",{x1:mL,y1:yBase,x2:W-mR,y2:yBase,stroke:T.axis,"stroke-width":1},svg);
+
+  // custom mutations (diamonds) on a top lane
+  if(CUSTOM.length){
+    const cy=yBase-lolliH+14,gC=el("g",{},svg);
+    CUSTOM.filter(c=>c.pos>=1&&c.pos<=L).forEach(c=>{
+      const x=X(c.pos),col=RAWCOL[c.type]||T.accent,r=HIGHLIGHT?6.5:5.2;
+      el("line",{x1:x,y1:cy,x2:x,y2:yBase,stroke:HIGHLIGHT?T.accent:T.faint,"stroke-width":HIGHLIGHT?1.3:.9,"stroke-dasharray":HIGHLIGHT?"":"2 2"},gC);
+      const d=`M ${x} ${cy-r} L ${x+r} ${cy} L ${x} ${cy+r} L ${x-r} ${cy} Z`;
+      const p=el("path",{d,fill:col,stroke:HIGHLIGHT?T.ink:T.surface,"stroke-width":HIGHLIGHT?1.6:1},gC);
+      if(HIGHLIGHT)el("path",{d:`M ${x} ${cy-r-3} L ${x+r+3} ${cy} L ${x} ${cy+r+3} L ${x-r-3} ${cy} Z`,fill:"none",stroke:T.accent,"stroke-width":1.2,opacity:.6},gC);
+      p.style.cursor="pointer";
+      p.addEventListener("mousemove",ev=>{tip.innerHTML=`<div class="t-name">${c.label||"custom mutation"}</div><b>${c.type}</b> · custom<br>residue ${c.pos}${structure?` · exon ${exonOf(structure,c.pos)||"–"}`:""}`;place(ev);});
+      p.addEventListener("mouseleave",hideTip);
+      if(c.label&&CUSTOM.length<=12)el("text",{x,y:cy-r-4,"font-size":8.5,fill:T.muted,"text-anchor":"middle","font-family":"var(--mono)"},gC).textContent=c.label.slice(0,16);
+    });
+  }
+
+  // domain track
+  const gT=el("g",{},svg),usedTypes=new Set();
+  el("rect",{x:mL,y:domTop+nLanes*laneH/2-2.5,width:plotW,height:5,rx:2.5,fill:T.backbone},gT);
+  rects.forEach(f=>{
+    const lane=laneOf.get(f),x=X(f.start),w=Math.max(2,X(f.end)-X(f.start)),col=FEAT_COL[f.type]||"#AAB3BB";usedTypes.add(f.type);
+    const r=el("rect",{x,y:domTop+lane*laneH,width:w,height:laneH-3,rx:3,fill:col,opacity:dim?.4:.93},gT);
+    if(!dim){r.addEventListener("mousemove",ev=>showFeatTip(ev,f));r.addEventListener("mouseleave",hideTip);}
+    if(w>46)el("text",{x:x+w/2,y:domTop+lane*laneH+laneH-6.5,"font-size":8.5,fill:"#fff","text-anchor":"middle","font-weight":600,opacity:dim?.5:1},gT).textContent=(f.desc||f.type).slice(0,Math.floor(w/5.7));
+  });
+  const pY=domTop+nLanes*laneH+3;
+  points.forEach(f=>{const x=X(Math.round((f.start+f.end)/2));el("line",{x1:x,y1:pY,x2:x,y2:pY+7,stroke:f.type==="Active site"?"#E74C3C":"#2C3E50","stroke-width":1.4,opacity:dim?.4:1},gT);usedTypes.add(f.type);});
+
+  // aligned exon strip
+  if(exonOn){
+    const gE=el("g",{},svg),ey=exonTop+8,eh=16;
+    el("text",{x:16,y:ey+eh/2,"font-size":10.5,fill:T.muted,"text-anchor":"middle",transform:`rotate(-90 16 ${ey+eh/2})`},svg).textContent="exons";
+    structure.segs.filter(s=>s.res0!=null).forEach((s,k)=>{
+      const x0=X(Math.max(s.res0,0)+1),x1=X(s.res1+1),w=Math.max(1.2,x1-x0);
+      el("rect",{x:x0,y:ey,width:w,height:eh,fill:k%2?T.exonUtr:T.exonCoding,stroke:T.surface,"stroke-width":.6},gE);
+      const rr=el("rect",{x:x0,y:ey,width:w,height:eh,fill:"transparent"},gE);rr.style.cursor="default";
+      rr.addEventListener("mousemove",ev=>{tip.innerHTML=`<b>Exon ${s.exon}</b> of ${structure.nExon}<br><span style="color:#9aa4ad">residues ${(s.res0+1|0)}–${Math.round(s.res1)}</span>`;place(ev);});
+      rr.addEventListener("mouseleave",hideTip);
+      if(w>16)el("text",{x:x0+w/2,y:ey+eh-4.5,"font-size":8,fill:THEME.mode==="dark"?"#0E1317":"#23423a","text-anchor":"middle","font-weight":600},gE).textContent=s.exon;
+    });
+    el("text",{x:mL,y:ey-4,"font-size":8.5,fill:T.faint,"text-anchor":"start"},gE).textContent=`5′UTR ${structure.utr5} nt`;
+    el("text",{x:W-mR,y:ey-4,"font-size":8.5,fill:T.faint,"text-anchor":"end"},gE).textContent=`3′UTR ${structure.utr3} nt`;
+  }
+
+  // density
+  const gD=el("g",{},svg),dT=new Float64Array(L+1),dM=new Float64Array(L+1);
+  posv.forEach(v=>{const a=Math.max(1,v.pos-win),b=Math.min(L,v.pos+win);for(let p=a;p<=b;p++){if(TRUNC.has(v.func_class))dT[p]++;else if(v.func_class==="Missense")dM[p]++;}});
+  let dMax=1;for(let p=1;p<=L;p++)dMax=Math.max(dMax,dT[p],dM[p]);
+  const yD=v=>densTop+densH-v/dMax*densH;
+  el("line",{x1:mL,y1:densTop+densH,x2:W-mR,y2:densTop+densH,stroke:T.axis,"stroke-width":1},gD);
+  el("line",{x1:mL,y1:densTop,x2:mL,y2:densTop+densH,stroke:T.grid,"stroke-width":.8},gD);
+  const area=arr=>{let d=`M ${mL} ${densTop+densH}`;for(let p=1;p<=L;p++)d+=` L ${X(p).toFixed(1)} ${yD(arr[p]).toFixed(1)}`;return d+` L ${X(L).toFixed(1)} ${densTop+densH} Z`;};
+  const o=dim?.4:1;
+  el("path",{d:area(dT),fill:dim?T.gray:"#D55E00","fill-opacity":dim?.25:.26,stroke:dim?T.gray:"#D55E00","stroke-width":1.1,opacity:o},gD);
+  el("path",{d:area(dM),fill:dim?T.gray:"#009E73","fill-opacity":dim?.3:.40,stroke:dim?T.gray:"#009E73","stroke-width":1.1,opacity:o},gD);
+  el("text",{x:16,y:densTop+densH/2,"font-size":10.5,fill:T.muted,"text-anchor":"middle",transform:`rotate(-90 16 ${densTop+densH/2})`},svg).textContent=`density ±${win}aa`;
+  el("text",{x:mL+5,y:densTop+11,"font-size":9.5,fill:dim?T.faint:"#D55E00","font-weight":600},gD).textContent="truncating";
+  el("text",{x:mL+5,y:densTop+23,"font-size":9.5,fill:dim?T.faint:"#009E73","font-weight":600},gD).textContent="missense";
+  el("text",{x:mL-7,y:densTop+5,"font-size":9,fill:T.faint,"text-anchor":"end"},gD).textContent=dMax;
+
+  const step=L<=400?50:L<=900?100:L<=1600?200:400;
+  for(let p=0;p<=L;p+=step){const x=X(Math.max(p,1));el("line",{x1:x,y1:densTop+densH,x2:x,y2:densTop+densH+5,stroke:T.axis,"stroke-width":.8},svg);el("text",{x,y:densTop+densH+17,"font-size":10,fill:T.muted,"text-anchor":"middle","font-family":"var(--mono)"},svg).textContent=p||1;}
+  el("text",{x:mL+plotW/2,y:H-5,"font-size":10.5,fill:T.muted,"text-anchor":"middle"},svg).textContent="amino-acid position (residue)";
+  buildLegend(data,usedTypes);
+}
+
+function buildLegend(data,usedTypes){
+  const T=window.T,lg=document.getElementById("legend");lg.innerHTML="";
+  const counts={};data.variants.forEach(v=>counts[v.func_class]=(counts[v.func_class]||0)+1);
+  CLASS_ORDER.forEach(c=>{if(!counts[c])return;const d=document.createElement("div");d.className="lg"+(HIDDEN.has(c)?" off":"");
+    d.innerHTML=`<span class="sw" style="background:${RAWCOL[c]}"></span>${c} <span class="ct">${counts[c]}</span>`;
+    d.onclick=()=>{HIDDEN.has(c)?HIDDEN.delete(c):HIDDEN.add(c);render(data,+winEl.value);};lg.appendChild(d);});
+  if(CUSTOM.length){const d=document.createElement("div");d.className="lgfeat";
+    d.innerHTML=`<span style="width:11px;height:11px;background:${T.accent};transform:rotate(45deg);display:inline-block"></span>custom mutation (${CUSTOM.length})`;lg.appendChild(d);}
+  if(usedTypes.size){const s=document.createElement("div");s.className="lgsep";lg.appendChild(s);
+    [...usedTypes].forEach(t=>{const col=t==="Active site"?"#E74C3C":t==="Binding site"?"#2C3E50":(FEAT_COL[t]||"#AAB3BB");const d=document.createElement("div");d.className="lgfeat";d.innerHTML=`<span class="sw" style="background:${col}"></span>${t}`;lg.appendChild(d);});}
+  if(data.structure&&exonToggle.checked){const d=document.createElement("div");d.className="lgfeat";d.innerHTML=`<span class="sw" style="background:${T.exonCoding}"></span>exon (coding)`;lg.appendChild(d);}
+}
+
+/* ===================== gene model (genomic) ===================== */
+function renderGeneModel(structure){
+  const T=window.T,svg=document.getElementById("genemodel");svg.innerHTML="";
+  const W=1100,mL=20,mR=20,plotW=W-mL-mR,H=120,midY=58;
+  const toScale=document.getElementById("introToScale").checked;
+  const ex=structure.exons,strand=structure.strand;
+  let xOf;
+  if(toScale){const span=structure.gmax-structure.gmin||1;xOf=g=>mL+(strand===1?(g-structure.gmin):(structure.gmax-g))/span*plotW;}
+  // build draw boxes
+  const boxes=[];
+  if(toScale){
+    ex.forEach(x=>{const a=xOf(x.s),b=xOf(x.e),left=Math.min(a,b),w=Math.max(1.5,Math.abs(b-a));boxes.push({ex:x,left,w});});
+  }else{
+    const gap=14,totLen=ex.reduce((s,x)=>s+x.len,0),avail=plotW-gap*(ex.length-1);
+    let cx=mL;ex.forEach(x=>{const w=Math.max(3,x.len/totLen*avail);boxes.push({ex:x,left:cx,w});cx+=w+gap;});
+  }
+  // intron line + chevrons
+  const x0=boxes[0].left+boxes[0].w/2,x1=boxes[boxes.length-1].left+boxes[boxes.length-1].w/2;
+  el("line",{x1:Math.min(x0,boxes[0].left),y1:midY,x2:boxes[boxes.length-1].left+boxes[boxes.length-1].w,y2:midY,stroke:T.grid,"stroke-width":1.4},svg);
+  for(let i=0;i<boxes.length-1;i++){
+    const xa=boxes[i].left+boxes[i].w,xb=boxes[i+1].left,xm=(xa+xb)/2;
+    const dir=1;// 5'->3' is left->right in both modes
+    el("path",{d:`M ${xm-3} ${midY-4} L ${xm+3} ${midY} L ${xm-3} ${midY+4}`,fill:"none",stroke:T.faint,"stroke-width":1.1},svg);
+    // intron hover zone
+    const iz=el("rect",{x:xa,y:midY-6,width:Math.max(1,xb-xa),height:12,fill:"transparent"},svg);iz.style.cursor="default";
+    const ilen=structure.introns[i];iz.addEventListener("mousemove",ev=>{tip.innerHTML=`<b>Intron ${i+1}</b><br><span style="color:#9aa4ad">${ilen.toLocaleString()} bp</span>`;place(ev);});iz.addEventListener("mouseleave",hideTip);
+  }
+  // exon boxes: coding tall, UTR short
+  const codingH=30,utrH=16;
+  boxes.forEach(({ex:x,left,w})=>{
+    // sub-portions in 5'->3' order: u5, cds, u3
+    const parts=[];if(x.u5>0)parts.push(["u5",x.u5]);if(x.cds>0)parts.push(["cds",x.cds]);if(x.u3>0)parts.push(["u3",x.u3]);
+    const tot=x.len;let cx=left;
+    parts.forEach(([kind,len])=>{
+      const pw=Math.max(.8,len/tot*w),isC=kind==="cds",h=isC?codingH:utrH;
+      el("rect",{x:cx,y:midY-h/2,width:pw,height:h,rx:isC?2:1,fill:isC?T.exonCoding:T.exonUtr,stroke:T.surface,"stroke-width":.5},svg);
+      cx+=pw;
+    });
+    // hover + number
+    const hz=el("rect",{x:left,y:midY-codingH/2,width:w,height:codingH,fill:"transparent"},svg);hz.style.cursor="default";
+    hz.addEventListener("mousemove",ev=>{tip.innerHTML=`<b>Exon ${x.n}</b> of ${structure.nExon}<br><span style="color:#9aa4ad">${x.len} bp${x.cds?` · ${x.cds} coding`:" · non-coding"}</span>`;place(ev);});
+    hz.addEventListener("mouseleave",hideTip);
+    if(w>12||!toScale)el("text",{x:left+w/2,y:midY+codingH/2+12,"font-size":8.5,fill:T.muted,"text-anchor":"middle","font-family":"var(--mono)"},svg).textContent=x.n;
+  });
+  // strand + scale
+  el("text",{x:mL,y:18,"font-size":10.5,fill:T.muted,"font-family":"var(--mono)"},svg).textContent=`chr${structure.chr} · ${strand===1?"+":"−"} strand · 5′→3′`;
+  if(toScale){
+    const span=structure.gmax-structure.gmin,nice=[100,200,500,1000,2000,5000,10000,20000,50000].find(n=>n/span*plotW>=60)||50000;
+    const px=nice/span*plotW;el("line",{x1:W-mR-px,y1:H-12,x2:W-mR,y2:H-12,stroke:T.axis,"stroke-width":1.4},svg);
+    el("line",{x1:W-mR-px,y1:H-15,x2:W-mR-px,y2:H-9,stroke:T.axis,"stroke-width":1.4},svg);el("line",{x1:W-mR,y1:H-15,x2:W-mR,y2:H-9,stroke:T.axis,"stroke-width":1.4},svg);
+    el("text",{x:W-mR-px/2,y:H-18,"font-size":9,fill:T.muted,"text-anchor":"middle","font-family":"var(--mono)"},svg).textContent=nice>=1000?`${nice/1000} kb`:`${nice} bp`;
+  }else{
+    el("text",{x:W-mR,y:H-12,"font-size":9,fill:T.faint,"text-anchor":"end"},svg).textContent="introns not to scale";
+  }
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  document.getElementById("gmmeta").textContent=`${structure.transcript} · ${structure.nExon} exons · ${(structure.gmax-structure.gmin+1).toLocaleString()} bp span`;
+  const strandSym=structure.strand===1?"+":"−";
+  document.getElementById("gminfo").innerHTML=
+    `Reference assembly <b>${structure.assembly}</b> &nbsp;·&nbsp; gene location `+
+    `<b>chr${structure.chr}:${(structure.geneStart||0).toLocaleString()}–${(structure.geneEnd||0).toLocaleString()}</b> `+
+    `(${strandSym} strand) &nbsp;·&nbsp; length <b>${((structure.geneEnd-structure.geneStart+1)||0).toLocaleString()} bp</b> &nbsp;·&nbsp; `+
+    `gene <a href="https://www.ensembl.org/Homo_sapiens/Gene/Summary?g=${structure.geneId}" target="_blank" rel="noopener">${structure.geneId}</a>`;
+}
+
+/* ===================== tooltips ===================== */
+const tip=document.getElementById("tip");
+function showTip(ev,v,more,struct){
+  const star=({"practice guideline":"★★★★","reviewed by expert panel":"★★★","criteria provided, multiple submitters, no conflicts":"★★","criteria provided, single submitter":"★"})[v.review]||"☆";
+  const ex=struct?exonOf(struct,v.pos):null;
+  tip.innerHTML=`<div class="t-name">${v.name}</div><b>${v.func_class}</b> · ${v.classification}<br>residue ${v.pos}${v.pos_src==="cdna"?" (approx)":""}${ex?` · exon ${ex}`:""} · ${star}<br><span style="color:#9aa4ad">${v.accession}</span>${more?`<br><i>${more}</i>`:""}`;place(ev);
+}
+function showFeatTip(ev,f){tip.innerHTML=`<b>${f.type}</b>${f.desc?` · ${f.desc}`:""}<br><span style="color:#9aa4ad">${f.start}–${f.end}</span>`;place(ev);}
+function place(ev){tip.style.opacity=1;let x=Math.min(ev.clientX+14,innerWidth-312),y=ev.clientY+14;if(y>innerHeight-90)y=ev.clientY-72;tip.style.left=x+"px";tip.style.top=y+"px";}
+function hideTip(){tip.style.opacity=0;}
+
+/* ===================== summary ===================== */
+function summary(data){
+  const s=document.getElementById("summary");
+  const plotted=data.variants.filter(v=>v.pos&&v.func_class!=="Structural/CNV").length;
+  const cnv=data.variants.filter(v=>v.func_class==="Structural/CNV").length;
+  s.innerHTML=`<div class="stat"><b>${data.variants.length}</b><small>P/LP variants</small></div>
+    <div class="stat"><b>${plotted}</b><small>plotted</small></div>
+    <div class="stat"><b>${cnv}</b><small>CNV · not plotted</small></div>
+    ${data.structure?`<div class="stat"><b>${data.structure.nExon}</b><small>exons</small></div>`:""}
+    ${CUSTOM.length?`<div class="stat"><b>${CUSTOM.length}</b><small>custom</small></div>`:""}
+    <div class="stat name"><span class="pn">${data.protein.name}</span><small>${data.protein.accession} · ${data.protein.length} aa</small></div>`;
+}
+
+/* ===================== controller ===================== */
+const statusEl=document.getElementById("status"),goEl=document.getElementById("go"),geneEl=document.getElementById("gene"),
+      winEl=document.getElementById("win"),winval=document.getElementById("winval"),resultEl=document.getElementById("result"),
+      exonToggle=document.getElementById("exonToggle"),modelToggle=document.getElementById("modelToggle"),
+      modelCard=document.getElementById("genemodelCard");
+let CURRENT=null;
+const setStatus=(m,busy,cls)=>statusEl.innerHTML=(busy?`<span class="spinner"></span>`:"")+(m?`<span class="${cls||''}">${m}</span>`:"");
+winEl.oninput=()=>{winval.textContent=winEl.value;if(CURRENT)render(CURRENT,+winEl.value);};
+
+try{const k=localStorage.getItem("vc:apikey");if(k)document.getElementById("apikey").value=k;const em=localStorage.getItem("vc:email");if(em)document.getElementById("email").value=em;}catch(e){}
+document.getElementById("apikey").addEventListener("change",e=>{try{localStorage.setItem("vc:apikey",e.target.value.trim());}catch(_){}});
+document.getElementById("email").addEventListener("change",e=>{try{localStorage.setItem("vc:email",e.target.value.trim());}catch(_){}});
+
+async function ensureStructure(){
+  if(CURRENT.structure)return true;
+  goEl.disabled=true;
+  try{CURRENT.structure=await getStructure(CURRENT.symbol,m=>setStatus(m,true));goEl.disabled=false;return true;}
+  catch(e){setStatus(`Couldn't load gene structure: ${e.message}`,false,"err");goEl.disabled=false;return false;}
+}
+async function run(){
+  const sym=geneEl.value.trim().toUpperCase().replace(/[^A-Z0-9\-]/g,"");
+  if(!sym){setStatus("Enter a gene symbol.",false,"err");return;}
+  goEl.disabled=true;HIDDEN=new Set();
+  try{
+    const{data,cached}=await getGene(sym,m=>setStatus(m,true));
+    if(!data.variants.length){setStatus(`No pathogenic / likely-pathogenic ClinVar variants for ${sym}.`,false,"err");goEl.disabled=false;return;}
+    data.structure=null;CURRENT=data;
+    if(exonToggle.checked||modelToggle.checked)await ensureStructure();
+    summary(CURRENT);render(CURRENT,+winEl.value);resultEl.style.display="block";
+    modelCard.style.display=modelToggle.checked&&CURRENT.structure?"block":"none";
+    if(modelToggle.checked&&CURRENT.structure)renderGeneModel(CURRENT.structure);
+    const plotted=data.variants.filter(v=>v.pos&&v.func_class!=="Structural/CNV").length;
+    setStatus(`${cached?"Loaded from cache":"Done"} — ${data.variants.length} P/LP variants for ${sym} (${plotted} plotted)${CURRENT.structure?`, ${CURRENT.structure.nExon} exons`:""}.`,false,cached?"cached":"");
+  }catch(e){setStatus(`Error: ${e.message}. Check the symbol or retry — NCBI throttles rapid requests (add an API key in Advanced).`,false,"err");}
+  goEl.disabled=false;
+}
+goEl.onclick=run;
+geneEl.addEventListener("keydown",e=>{if(e.key==="Enter")run();});
+document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{geneEl.value=c.dataset.g;run();});
+
+exonToggle.addEventListener("change",async()=>{if(!CURRENT)return;if(exonToggle.checked&&!CURRENT.structure){if(!await ensureStructure()){exonToggle.checked=false;return;}}summary(CURRENT);render(CURRENT,+winEl.value);setStatus("",false);});
+modelToggle.addEventListener("change",async()=>{
+  if(!CURRENT){modelCard.style.display="none";return;}
+  if(modelToggle.checked){if(!CURRENT.structure&&!await ensureStructure()){modelToggle.checked=false;return;}modelCard.style.display="block";renderGeneModel(CURRENT.structure);summary(CURRENT);}
+  else modelCard.style.display="none";
+  setStatus("",false);
+});
+document.getElementById("introToScale").addEventListener("change",()=>{if(CURRENT&&CURRENT.structure)renderGeneModel(CURRENT.structure);});
+
+/* custom mutations */
+const cmList=document.getElementById("cmList"),cmErr=document.getElementById("cmErr");
+function renderCmList(){
+  cmList.innerHTML="";
+  CUSTOM.forEach(c=>{const d=document.createElement("div");d.className="cm-chip";
+    d.innerHTML=`<span class="dot" style="background:${RAWCOL[c.type]||window.T.accent}"></span>${c.label?c.label+" · ":""}${c.type} @ ${c.pos}<button title="remove">×</button>`;
+    d.querySelector("button").onclick=()=>{CUSTOM=CUSTOM.filter(x=>x.id!==c.id);renderCmList();if(CURRENT){summary(CURRENT);render(CURRENT,+winEl.value);}};
+    cmList.appendChild(d);});
+}
+document.getElementById("cmAdd").onclick=()=>{
+  cmErr.textContent="";
+  const pos=parseInt(document.getElementById("cmPos").value,10);
+  const type=document.getElementById("cmType").value,label=document.getElementById("cmLabel").value.trim();
+  if(!pos||pos<1){cmErr.textContent="Enter a residue position ≥ 1.";return;}
+  if(CURRENT&&pos>CURRENT.protein.length){cmErr.textContent=`Position exceeds protein length (${CURRENT.protein.length} aa).`;return;}
+  CUSTOM.push({id:Date.now()+Math.random(),pos,type,label});
+  document.getElementById("cmPos").value="";document.getElementById("cmLabel").value="";
+  renderCmList();if(CURRENT){summary(CURRENT);render(CURRENT,+winEl.value);}
+};
+document.getElementById("cmHighlight").addEventListener("change",e=>{HIGHLIGHT=e.target.checked;if(CURRENT)render(CURRENT,+winEl.value);});
+
+/* downloads */
+function svgString(id){const node=document.getElementById(id);const s=node.cloneNode(true);s.setAttribute("xmlns",SVGNS);
+  const vb=node.viewBox.baseVal;
+  const bg=document.createElementNS(SVGNS,"rect");bg.setAttribute("x",0);bg.setAttribute("y",0);bg.setAttribute("width",vb.width);bg.setAttribute("height",vb.height);bg.setAttribute("fill",window.T.surface);s.insertBefore(bg,s.firstChild);
+  const cr=document.createElementNS(SVGNS,"text");cr.setAttribute("x",vb.width-6);cr.setAttribute("y",vb.height-5);cr.setAttribute("text-anchor","end");cr.setAttribute("font-size","8");cr.setAttribute("font-family","monospace");cr.setAttribute("fill",window.T.faint);cr.textContent="© Nguyen Thanh Phuong";s.appendChild(cr);
+  return new XMLSerializer().serializeToString(s);}
+const dl=(name,blob)=>{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);};
+function pngFrom(id,name){const vb=document.getElementById(id).viewBox.baseVal,scale=2,img=new Image(),url=URL.createObjectURL(new Blob([svgString(id)],{type:"image/svg+xml"}));img.onload=()=>{const cv=document.createElement("canvas");cv.width=vb.width*scale;cv.height=vb.height*scale;const cx=cv.getContext("2d");cx.fillStyle=window.T.surface;cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);cv.toBlob(b=>dl(name,b),"image/png");};img.src=url;}
+document.getElementById("dlsvg").onclick=()=>dl(`${CURRENT.symbol}_variant_map.svg`,new Blob([svgString("plot")],{type:"image/svg+xml"}));
+document.getElementById("dlpng").onclick=()=>pngFrom("plot",`${CURRENT.symbol}_variant_map.png`);
+document.getElementById("dlmsvg").onclick=()=>dl(`${CURRENT.symbol}_gene_model.svg`,new Blob([svgString("genemodel")],{type:"image/svg+xml"}));
+document.getElementById("dlmpng").onclick=()=>pngFrom("genemodel",`${CURRENT.symbol}_gene_model.png`);
+document.getElementById("dlcsv").onclick=()=>{const h=["accession","name","classification","review_status","variant_type","func_class","residue","pos_source","protein_change"];
+  const rows=[h.join(",")];CURRENT.variants.forEach(v=>rows.push([v.accession,`"${(v.name||"").replace(/"/g,'""')}"`,v.classification,`"${v.review}"`,v.variant_type,v.func_class,v.pos??"",v.pos_src??"",v.protein_change].join(",")));
+  if(CUSTOM.length){rows.push("");rows.push("# custom mutations");rows.push("label,type,residue");CUSTOM.forEach(c=>rows.push([`"${(c.label||"").replace(/"/g,'""')}"`,c.type,c.pos].join(",")));}
+  dl(`${CURRENT.symbol}_variants.csv`,new Blob([rows.join("\n")],{type:"text/csv"}));};
+
+/* init */
+document.getElementById("cyear").textContent=new Date().getFullYear();
+initThemeUI();applyTheme();
+</script>
+</body>
+</html>
