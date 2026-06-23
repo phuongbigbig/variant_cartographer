@@ -2,7 +2,7 @@
 
 A single-file, browser-based tool that maps every **pathogenic / likely-pathogenic** ClinVar variant onto a protein, alongside its domain architecture, exon structure, and any custom mutations you add. Type a human gene symbol and it draws a publication-style lollipop + density figure on the fly.
 
-**Live site:** `https://YOUR-USERNAME.github.io/REPO-NAME/`
+**Live site:** `[https://YOUR-USERNAME.github.io/REPO-NAME/](https://phuongbigbig.github.io/variant_cartographer/)`
 *(replace with your actual GitHub Pages URL after deploying)*
 
 ---
