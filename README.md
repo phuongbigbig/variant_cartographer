@@ -2,8 +2,7 @@
 
 A single-file, browser-based tool that maps every **pathogenic / likely-pathogenic** ClinVar variant onto a protein, alongside its domain architecture, exon structure, and any custom mutations you add. Type a human gene symbol and it draws a publication-style lollipop + density figure on the fly.
 
-**Live site:** `https://phuongbigbig.github.io/variant_cartographer/`
-
+**Live site:** `https://tinyurl.com/variant-cartographer`
 
 ---
 
@@ -18,7 +17,7 @@ A single-file, browser-based tool that maps every **pathogenic / likely-pathogen
 - **Detailed gene model** — a separate box drawing the full exon/intron/UTR structure in genomic coordinates (with a *to-scale* toggle), independent of the protein axis. Shows reference assembly and the gene's chromosomal start/stop.
 - **Custom mutations** — add your own variants by residue position, type, and label; multiple supported. A *highlight* mode grays out the ClinVar variants so your variants of interest stand out.
 - **Themes** — light/dark mode and six accent palettes, with an accent-matched page background.
-- **Exports** — download the protein map and the gene model each as **SVG** (vector) or **PNG**, and the full variant table as **CSV**.
+- **Exports** — download the protein map and the gene model each as **SVG** (vector) or **PNG**; the full variant table as **CSV**; and a multi-sheet **Excel workbook** (`.xlsx`) containing a **Summary** (breakdown by classification, review-star level, variant type, and functional class), a full **P-LP Variants** sheet (with GRCh38 + GRCh37 coordinates, stars, last-evaluated date, residue, etc.), and an **Excluded (non-P/LP)** sheet documenting records the broad ClinVar search captured but that are not aggregate P/LP.
 
 ## How it works
 
